@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Upscaler</title>
+    <title>AI Image Upscaler</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,12 +12,26 @@
             background-color: #f4f4f4;
         }
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             text-align: center;
         }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 30px;
+            background-color: #fff;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            background-color: #f9f9f9;
+        }
         input[type="file"] {
-            margin: 20px 0;
+            display: none;
         }
         .output {
             display: flex;
@@ -26,8 +40,31 @@
         }
         .output img {
             margin: 10px;
-            max-width: 45%;
+            max-width: 200px;
             border: 2px solid #ddd;
+        }
+        .clear-btn, .download-all-btn {
+            margin: 10px;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            background-color: #28a745;
+            color: white;
+            border-radius: 5px;
+        }
+        .clear-btn {
+            background-color: #dc3545;
+        }
+        .output-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px;
+        }
+        .output-container img {
+            max-width: 100%;
         }
         .loading {
             display: none;
@@ -38,36 +75,68 @@
 </head>
 <body>
     <div class="container">
-        <h1>AI Image Upscaler</h1>
+        <h1>Загрузка и улучшение изображений</h1>
+        <div class="upload-area" id="uploadArea">
+            Перетащите файлы сюда или нажмите для выбора
+        </div>
         <input type="file" id="imageInput" accept="image/*" multiple>
-        <div class="loading" id="loading">Upscaling in progress, please wait...</div>
+        <div class="loading" id="loading">Улучшение изображений, пожалуйста, подождите...</div>
         <div class="output" id="output"></div>
+        <button class="clear-btn" id="clearBtn">Очистить</button>
+        <button class="download-all-btn" id="downloadAllBtn">Скачать все изображения</button>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/esrgan"></script>
     <script>
+        const uploadArea = document.getElementById('uploadArea');
         const imageInput = document.getElementById('imageInput');
         const output = document.getElementById('output');
         const loading = document.getElementById('loading');
+        const clearBtn = document.getElementById('clearBtn');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        
+        let upscaledImages = [];
 
-        imageInput.addEventListener('change', handleFiles);
+        uploadArea.addEventListener('click', () => imageInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.backgroundColor = '#f9f9f9';
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.backgroundColor = '#fff';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.backgroundColor = '#fff';
+            handleFiles(e.dataTransfer.files);
+        });
 
-        async function handleFiles() {
-            const files = imageInput.files;
+        imageInput.addEventListener('change', () => handleFiles(imageInput.files));
+
+        async function handleFiles(files) {
             if (files.length === 0) return;
 
             loading.style.display = 'block';
             output.innerHTML = '';
+            upscaledImages = [];
 
             for (let file of files) {
                 const imgElement = document.createElement('img');
                 const imgURL = URL.createObjectURL(file);
                 imgElement.src = imgURL;
-                output.appendChild(imgElement);
+                
+                const container = document.createElement('div');
+                container.className = 'output-container';
+                container.appendChild(imgElement);
+                output.appendChild(container);
 
                 const upscaledImage = await upscaleImage(file);
                 const upscaledImgElement = document.createElement('img');
                 upscaledImgElement.src = upscaledImage;
-                output.appendChild(upscaledImgElement);
+                container.appendChild(upscaledImgElement);
+
+                upscaledImages.push(upscaledImage);
             }
 
             loading.style.display = 'none';
@@ -82,17 +151,30 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            // Placeholder for AI upscaling algorithm.
-            // You can replace this with a real AI model using a service like TensorFlow.js or an API.
+            // Использование модели ESRGAN для улучшения изображения
+            const model = await esrgan.load();
+            const tensor = tf.browser.fromPixels(canvas);
+            const upscaledTensor = await model.predict(tensor);
+            const upscaledImgData = await tf.browser.toPixels(upscaledTensor);
 
-            // Simulate AI processing delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            ctx.putImageData(imageData, 0, 0);
+            ctx.putImageData(new ImageData(upscaledImgData, canvas.width, canvas.height), 0, 0);
 
             return canvas.toDataURL();
         }
+
+        clearBtn.addEventListener('click', () => {
+            output.innerHTML = '';
+            upscaledImages = [];
+        });
+
+        downloadAllBtn.addEventListener('click', () => {
+            upscaledImages.forEach((img, index) => {
+                const link = document.createElement('a');
+                link.href = img;
+                link.download = `upscaled_image_${index + 1}.png`;
+                link.click();
+            });
+        });
     </script>
 </body>
 </html>
