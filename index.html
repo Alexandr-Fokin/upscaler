@@ -38,10 +38,17 @@
             flex-wrap: wrap;
             justify-content: space-around;
         }
-        .output img {
+        .output-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid #ddd;
+            padding: 15px;
             margin: 10px;
+        }
+        .output-container img {
             max-width: 200px;
-            border: 2px solid #ddd;
+            margin-bottom: 10px;
         }
         .clear-btn, .download-all-btn {
             margin: 10px;
@@ -54,17 +61,6 @@
         }
         .clear-btn {
             background-color: #dc3545;
-        }
-        .output-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin: 10px;
-        }
-        .output-container img {
-            max-width: 100%;
         }
         .loading {
             display: none;
@@ -118,8 +114,6 @@
             if (files.length === 0) return;
 
             loading.style.display = 'block';
-            output.innerHTML = '';
-            upscaledImages = [];
 
             for (let file of files) {
                 const imgElement = document.createElement('img');
